@@ -9,6 +9,7 @@ import hashlib
 
 # pip install websocket-client
 ws = ""
+playerName = "CasinoNiBenj"
 
 def takeAction(action, data, hand, board, chips):
     actionPoint = 5
@@ -92,7 +93,7 @@ def doListen():
         global ws, playerName
 
         ws = create_connection("ws://10.5.60.55:3001/")
-        playerMD5 = hashlib.md5(playerName).hexdigest()
+        playerMD5 = hashlib.md5(playerName.encode('utf-8')).hexdigest()
 
         ws.send(json.dumps({
             "eventName": "__join",
@@ -114,13 +115,13 @@ def doListen():
             print(event_name)
             if event_name == "__new_round":
                 for p in data["players"]:
-                    if p == playerName:
+                    if p == playerMD5:
                         hand = p["cards"]
                         chips = p["chips"]
 
-            elif event_name == "__action"
+            elif event_name == "__action":
                 for p in data["players"]:
-                    if p == playerName:
+                    if p == playerMD5:
                         hand = p["cards"]
                         chips = p["chips"]
 
