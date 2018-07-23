@@ -118,21 +118,25 @@ def doListen():
                     if p == playerMD5:
                         hand = p["cards"]
                         chips = p["chips"]
+                        takeAction(event_name, data, hand, board, chips)
+
 
             elif event_name == "__action":
                 for p in data["players"]:
                     if p == playerMD5:
                         hand = p["cards"]
                         chips = p["chips"]
+                        takeAction(event_name, data, hand, board, chips)
+
 
             if event_name == "__deal":
                 board = data["table"]["board"]
+                takeAction(event_name, data, hand, board, chips)
 
             pprint.pprint(data)
             print(data)
 
-            takeAction(event_name, data, hand, board, chips)
-
+            
     except Exception as e:
         print(e)
         ws.close()
