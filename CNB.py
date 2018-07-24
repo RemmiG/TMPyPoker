@@ -11,7 +11,8 @@ import hashlib
 ws = ""
 #playerName = "40930"
 playerName = "CasinoNiBenj"
-gameServer = "ws://10.104.65.33:3001/"
+#gameServer = "ws://10.104.65.33:3001/"
+gameServer = "ws://10.5.60.55:3001"
 
 cardNumber = ['2','3','4','5','6','7','8','9','T','J','Q','K','A']
 
@@ -178,7 +179,7 @@ def doListen():
         global ws, playerName
 
         ws = create_connection(gameServer)
-        playerMD5 = hashlib.md5(playerName.encode('utf-8')).hexdigest()
+        #playerMD5 = hashlib.md5(playerName.encode('utf-8')).hexdigest()
 
         ws.send(json.dumps({
             "eventName": "__join",
@@ -194,20 +195,15 @@ def doListen():
 
             result = ws.recv()
             msg = json.loads(result)
-            event_name = msg["eventName"]
+            eventName = msg["eventName"]
             data = msg["data"]
 
-            print(event_name)
-
-            if event_name == "__action":
+            if eventName == "__action":
                 hand = data["self"]["cards"]
                 chips = data["self"]["chips"]
                 checkCards(hand, board)
 
-            if event_name == "__bet":
-                #Good Hand = Raise // Two Pairs or Higher
-                #Bad Hand = One Pair // Bet/Fold
-                #High Card = Fold
+            if eventName == "__bet":
                 checkCards(hand, board)
 
             if eventName == "__deal":
