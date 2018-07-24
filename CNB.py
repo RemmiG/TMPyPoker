@@ -116,7 +116,7 @@ def calculateOdds(currentCards, suited):
 
         cardValues = sorted(cardValues)
 
-        highCard = cardNumber[cardValues[len(cardValues)-1]]
+        highCard = cardValues[len(cardValues)-1]
 
         pairNumbers = []
 
@@ -127,6 +127,7 @@ def calculateOdds(currentCards, suited):
                     count += 1
             if count > 1:
                 pairNumbers.append(count)
+                highCard = cardNumber.index(number)
 
         if len(pairNumbers) > 1:
             if pairNumbers[0] == 3 or pairNumbers[1] == 3:
@@ -161,6 +162,8 @@ def calculateOdds(currentCards, suited):
             takeAction("Raise")
         elif chanceOfWinning < 9:
             takeAction("Call")
+        elif chanceOfWinning == 9 and highCard > 11:
+            takeAction("Check")
         else:
             if(len(currentCards) >= 6):
                 takeAction("Fold")
