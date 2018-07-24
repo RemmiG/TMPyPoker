@@ -99,8 +99,12 @@ def calculateOdds(currentCards, suited):
 
         if goodHand and suited:
              takeAction("Call")
+        elif goodHand or suited:
+            takeAction("Check")
         else:
             takeAction("Fold")
+
+        
     else:
         #River
         print(currentCards)
