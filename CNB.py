@@ -15,6 +15,8 @@ playerName = "CasinoNiBenj"
 gameServer = "ws://10.5.60.55:3001"
 
 cardNumber = ['2','3','4','5','6','7','8','9','T','J','Q','K','A']
+hand = []
+board = []
 
 def checkCards(hand, board):
     currentCards = []
@@ -97,10 +99,11 @@ def calculateOdds(currentCards, suited):
 
         if goodHand and suited:
              takeAction("Call")
-        
-        takeAction("Check")
+        else:
+            takeAction("Fold")
     else:
         #River
+        print(currentCards)
         cardValues = []
         highCard = ''
 
@@ -118,21 +121,23 @@ def calculateOdds(currentCards, suited):
             for card in currentCards:
                 if(number == card):
                     count += 1
-            if count > 2:
+            if count > 1:
                 pairNumbers.append(count)
-        
+
         if len(pairNumbers) > 1:
             if pairNumbers[0] == 3 or pairNumbers[1] == 3:
                 chanceOfWinning = combinations["Full House"]
             else:
                 chanceOfWinning = combinations["Two Pairs"]
-        else:
+        elif len(pairNumbers) == 1:
             if pairNumbers[0] == 4:
                 chanceOfWinning = combinations["Four of a Kind"]
             elif pairNumbers[0] == 3:
                 chanceOfWinning = combinations["Three of a Kind"]
             else:
                 chanceOfWinning = combinations["Pair"]
+
+        print(pairNumbers)
 
         straight = isConsecutive(cardValues)
 
@@ -150,13 +155,19 @@ def calculateOdds(currentCards, suited):
             takeAction("All In")
         elif chanceOfWinning < 7:
             takeAction("Raise")
-        elif chanceOfWinning < 8:
+        elif chanceOfWinning < 9:
             takeAction("Call")
         else:
-            takeAction("Check")
+            if(len(currentCards) >= 6):
+                takeAction("Fold")
+            else:
+                takeAction("Check")
+
+    print(chanceOfWinning)
 
 def takeAction(actionTaken):
     print("Taking Action!")
+    print(actionTaken)
 
     possibleActions = {
         "All In": "allin",
@@ -169,17 +180,17 @@ def takeAction(actionTaken):
     ws.send(json.dumps({
         "eventName": "__action",
         "data": {
-            "action": possibleActions['actionTaken'],
-            "playerName": playerName,
+            "action": possibleActions[actionTaken],
+            "playerName": playerMD5,
         }
     }))
 
 def doListen():
     try:
-        global ws, playerName
+        global ws, playerName, playerMD5
 
         ws = create_connection(gameServer)
-        #playerMD5 = hashlib.md5(playerName.encode('utf-8')).hexdigest()
+        playerMD5 = hashlib.md5(playerName.encode('utf-8')).hexdigest()
 
         ws.send(json.dumps({
             "eventName": "__join",
@@ -189,14 +200,14 @@ def doListen():
         }))
 
         while 1:
-            hand = []
-            board = []
             chips = 0
 
             result = ws.recv()
             msg = json.loads(result)
             eventName = msg["eventName"]
             data = msg["data"]
+
+            print (eventName)
 
             if eventName == "__action":
                 hand = data["self"]["cards"]
@@ -209,6 +220,17 @@ def doListen():
             if eventName == "__deal":
                 board = data["table"]["board"]
 
+            if eventName == "__new_round":
+                players = data["players"]
+                for player in players:
+                    if player["playerName"] == playerMD5:
+                        hand = player["cards"]
+                board = []
+
+            if eventName == "__round_end":
+                hand = []
+                board = []
+
     except Exception as e:
         print(e)
         ws.close()
@@ -217,4 +239,3 @@ def doListen():
 
 if __name__ == '__main__':
     doListen()
-
