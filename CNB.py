@@ -9,90 +9,175 @@ import hashlib
 
 # pip install websocket-client
 ws = ""
+#playerName = "40930"
 playerName = "CasinoNiBenj"
+gameServer = "ws://10.104.65.33:3001/"
 
-def takeAction(action, data, hand, board, chips):
-    actionPoint = 5
+cardNumber = ['2','3','4','5','6','7','8','9','T','J','Q','K','A']
 
-    if hand[0][0] == 'K':
-        hand [0][0] = 13
-    elif hand[0][0] == 'Q':
-        hand[0][0] = 12
-    elif hand[0][0] == 'J':
-        hand[0][0] = 11
-    elif hand[0][0] == 'A':
-        hand[0][0] = 1
+def checkCards(hand, board):
+    currentCards = []
+    suiteList = []
 
-    if hand[1][0] == 'K':
-        hand [1][0] = 13
-    elif hand[1][0] == 'Q':
-        hand[1][0] = 12
-    elif hand[1][0] == 'J':
-        hand[1][0] = 11
-    elif hand[1][0] == 'A':
-        hand[1][0] = 1
+    suited = False
+    cardSuite = {'D':0,'H':0,'S':0,'C':0}
 
-    if (int(hand[0][0]) - int (hand[1][0])) > 3:
-        actionPoint -= 2
+    for card in hand:
+        currentCards.append(card[0])
+        suiteList.append(card[1])
 
-    elif (int(hand[0][0]) - int (hand[1][0])) == 0:
-        actionPoint += 4
+    for card in board:
+        currentCards.append(card[0])
+        suiteList.append(card[1])
 
-    if (hand[0][1] == hand[1][1]):
-        actionPoint += 3
+    for suite in suiteList:
+        for card in cardSuite:
+            if(suite == card):
+                cardSuite[card] += 1
+
+    for card in cardSuite:
+        if len(currentCards) == 2 and cardSuite[card] == 2:
+            suited = True
+        if cardSuite[card] >= 5:
+            suited = True
+
+    calculateOdds(currentCards, suited)
+
+def calculateOdds(currentCards, suited):
+    def isConsecutive(cardList):
+        cardList = sorted(cardList)
+        n = len(cardList)
+
+        minCard = cardList[0]
+        maxCard = cardList[n-1]
+        
+        if (((maxCard - minCard) + 1) == n):
+            return True
+
+        return False
+
+    chanceOfWinning = 10
+    combinations = {
+        "High Card" : 10, #Check/Fold/Bet/Raise
+        "Pair" : 9,  #Check/Fold/Bet/Raise
+        "Two Pairs" : 8, #Bet/Raise
+        "Three of a Kind" : 7, #Bet/Raise
+        "Straight" : 6, #Bet/Raise
+        "Flush" : 5, #Bet/Raise
+        "Full House" : 4, #Raise
+        "Four of a Kind" : 3, #All In
+        "Straight Flush" : 2, #All In
+        "Royal Flush" : 1 #All In
+        }
+
+    #Opening Hand
+    if(len(currentCards) == 2):
+        difference = 0
+        goodHand = True
+
+        for card in currentCards:
+            difference = abs(difference - cardNumber.index(card))
+            if cardNumber.index(card) <= 6:
+                goodHand = False
+
+        if difference == 0:
+            chanceOfWinning = combinations["Pair"]
+            if goodHand:
+                takeAction("Raise")
+            else:
+                takeAction("Call")
+
+        if difference < 3:
+            chanceOfWinning = combinations["Straight"]
+            if goodHand and suited:
+                takeAction("Raise")
+            else:
+                takeAction("Call")
+
+        if goodHand and suited:
+             takeAction("Call")
+        
+        takeAction("Check")
     else:
-        actionPoint -= 1
+        #River
+        cardValues = []
+        highCard = ''
 
-    if actionPoint > 7:
-        if(chips > 200):
-            ws.send(json.dumps({
-                "eventName": "__action",
-                "data": {
-                    "action": "raise",
-                    "playerName": playerName,
-                    "amount": chips/8
-                }
-            }))
+        for card in currentCards:
+            cardValues.append(cardNumber.index(card))
+
+        cardValues = sorted(cardValues)
+
+        highCard = cardNumber[cardValues[len(cardValues)-1]]
+
+        pairNumbers = []
+
+        for number in cardNumber:
+            count = 0
+            for card in currentCards:
+                if(number == card):
+                    count += 1
+            if count > 2:
+                pairNumbers.append(count)
+        
+        if len(pairNumbers) > 1:
+            if pairNumbers[0] == 3 or pairNumbers[1] == 3:
+                chanceOfWinning = combinations["Full House"]
+            else:
+                chanceOfWinning = combinations["Two Pairs"]
         else:
-            ws.send(json.dumps({
-                "eventName": "__action",
-                "data": {
-                    "action": "allin",
-                    "playerName": playerName,
-                }
-            }))
+            if pairNumbers[0] == 4:
+                chanceOfWinning = combinations["Four of a Kind"]
+            elif pairNumbers[0] == 3:
+                chanceOfWinning = combinations["Three of a Kind"]
+            else:
+                chanceOfWinning = combinations["Pair"]
 
-    if actionPoint >= 4:
-        ws.send(json.dumps({
-            "eventName": "__action",
-            "data": {
-                "action": "call",
-                "playerName": playerName,
-            }
-        }))
+        straight = isConsecutive(cardValues)
 
-    if actionPoint < 3:
-        ws.send(json.dumps({
-            "eventName": "__action",
-            "data": {
-                "action": "check",
-                "playerName": playerName,
-            }
-        }))
-    else:
-        ws.send(json.dumps({
-            "eventName": "__action",
-            "data": {
-                "action": "fold",
-                "playerName": playerName,
-            }
-        }))
+        if straight and len(pairNumbers) == 0:
+            chanceOfWinning = combinations["Straight"]
+
+        if suited:
+            chanceOfWinning = combinations["Flush"]
+            if straight:
+                chanceOfWinning = combinations["Straight Flush"]
+                if highCard == 'A':
+                    chanceOfWinning = combinations["Royal Flush"]
+
+        if chanceOfWinning < 4:
+            takeAction("All In")
+        elif chanceOfWinning < 7:
+            takeAction("Raise")
+        elif chanceOfWinning < 8:
+            takeAction("Call")
+        else:
+            takeAction("Check")
+
+def takeAction(actionTaken):
+    print("Taking Action!")
+
+    possibleActions = {
+        "All In": "allin",
+        "Raise": "raise",
+        "Call": "call",
+        "Check": "check",
+        "Fold": "fold"
+    }
+
+    ws.send(json.dumps({
+        "eventName": "__action",
+        "data": {
+            "action": possibleActions['actionTaken'],
+            "playerName": playerName,
+        }
+    }))
 
 def doListen():
     try:
         global ws, playerName
 
-        ws = create_connection("ws://10.5.60.55:3001/")
+        ws = create_connection(gameServer)
         playerMD5 = hashlib.md5(playerName.encode('utf-8')).hexdigest()
 
         ws.send(json.dumps({
@@ -113,30 +198,21 @@ def doListen():
             data = msg["data"]
 
             print(event_name)
-            if event_name == "__new_round":
-                for p in data["players"]:
-                    if p == playerMD5:
-                        hand = p["cards"]
-                        chips = p["chips"]
-                        takeAction(event_name, data, hand, board, chips)
 
+            if event_name == "__action":
+                hand = data["self"]["cards"]
+                chips = data["self"]["chips"]
+                checkCards(hand, board)
 
-            elif event_name == "__action":
-                for p in data["players"]:
-                    if p == playerMD5:
-                        hand = p["cards"]
-                        chips = p["chips"]
-                        takeAction(event_name, data, hand, board, chips)
+            if event_name == "__bet":
+                #Good Hand = Raise // Two Pairs or Higher
+                #Bad Hand = One Pair // Bet/Fold
+                #High Card = Fold
+                checkCards(hand, board)
 
-
-            if event_name == "__deal":
+            if eventName == "__deal":
                 board = data["table"]["board"]
-                takeAction(event_name, data, hand, board, chips)
 
-            pprint.pprint(data)
-            print(data)
-
-            
     except Exception as e:
         print(e)
         ws.close()
