@@ -156,13 +156,13 @@ def calculateOdds(currentCards, suited):
                 if highCard == 'A':
                     chanceOfWinning = combinations["Royal Flush"]
 
-        if chanceOfWinning < 4:
+        if chanceOfWinning < combinations["Full House"]:
             takeAction("All In")
-        elif chanceOfWinning < 7:
+        elif chanceOfWinning < combinations["Two Pairs"]:
             takeAction("Raise")
-        elif chanceOfWinning < 9:
+        elif chanceOfWinning < combinations["Pair"] :
             takeAction("Call")
-        elif chanceOfWinning == 9 and highCard > 11:
+        elif chanceOfWinning == combinations["Pair"] and highCard > cardNumber.index("J"):
             takeAction("Check")
         else:
             if(len(currentCards) >= 6):
@@ -187,8 +187,7 @@ def takeAction(actionTaken):
     ws.send(json.dumps({
         "eventName": "__action",
         "data": {
-            "action": possibleActions[actionTaken],
-            "playerName": playerMD5,
+            "action": possibleActions[actionTaken]
         }
     }))
 
@@ -234,15 +233,10 @@ def doListen():
                         hand = player["cards"]
                 board = []
 
-            if eventName == "__round_end":
-                hand = []
-                board = []
-
     except Exception as e:
         print(e)
         ws.close()
         doListen()
-
 
 if __name__ == '__main__':
     doListen()
